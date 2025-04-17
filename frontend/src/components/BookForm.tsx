@@ -26,6 +26,9 @@ const BookForm = ({ reloadBooks }:Props) => {
         });
         setTitle("");
         setAuthor("");
+        setStatus("unread");
+        setCategory("");
+        setRating(3);
         alert("本を追加しました！");
         reloadBooks();
     };

@@ -53,10 +53,10 @@ const BookList = () => {
             <ul>
                 {books.map((book) => (
                     <li key={book.id}>
-                        タイトル：{book.title} <br/>
-                        著者： {book.author} <br/>
-                        ステータス：{statusMap[book.status]}<br/>
-                        評価：{ratingMap[book.rating]}<br/>
+                        <p className="info">タイトル：{book.title} </p>
+                        <p className="info">著者： {book.author}</p>
+                        <p className={`status ${book.status}`}>{statusMap[book.status]}</p>
+                        <p>評価：{ratingMap[book.rating]}</p>
                         <button onClick={() => setDetailBook(book)}>詳細</button>
                         <button onClick={() => handleDelete(book.id)}>削除</button>
                     </li>
