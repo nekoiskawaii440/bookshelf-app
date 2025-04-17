@@ -65,7 +65,7 @@ const BookList = () => {
 
     const handleSort = (type: string, order:"asc" | "desc") => {
         const sortedBooks = [...books];
-        const direction = sortOrder === "asc" ? 1 : -1;
+        const direction = order === "asc" ? 1 : -1;
       
         switch (type) {
           case "title":
