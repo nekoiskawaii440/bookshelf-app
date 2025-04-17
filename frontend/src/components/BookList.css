@@ -40,6 +40,51 @@ li p {
   margin: 0px;
 }
 
+/* .sort {
+  display: flex;
+  flex-flow: row;
+} */
+
+.sort {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 2rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.sort select {
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #d4b483;
+  background-color: #fffaf2;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.sort select:hover,
+.sort select:focus {
+  box-shadow: 0 0 0 2px rgba(180, 140, 90, 0.3);
+  outline: none;
+}
+
+.sort-order-btn {
+  margin-left: 1rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #d4b483;
+  border-radius: 4px;
+  background-color: #fffaf2;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sort-order-btn:hover {
+  background-color: #f0e4d4;
+}
+
 .info {
   text-decoration:underline;
 }
