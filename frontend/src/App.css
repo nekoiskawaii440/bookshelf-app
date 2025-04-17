@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f0e6d6;
+}
+
+h1 {
+  text-align: center;
+  color: #4b2e2e;
+  margin-bottom: 1rem;
+}
+
+.contents {
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* 横中央 */
+  justify-content: center; /* 縦中央 */
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: "Segoe UI", sans-serif;
+}
+
+hr {
+  border: none;
+  height: 2px;
+  background-color: #b08a60;
+  margin: 0 2rem 1.5rem;
+}

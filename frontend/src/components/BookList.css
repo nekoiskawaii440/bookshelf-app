@@ -1,0 +1,37 @@
+ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    justify-content: center;
+  }
+  
+  li {
+    background: #fffaf2;
+    border: 2px solid #d4b483;
+    border-radius: 8px;
+    width: 200px;
+    padding: 1rem;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-weight: bold;
+  }
+  
+  li button {
+    border: none;
+    background-color: #b08a60;
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: auto;
+    transition: background-color 0.2s;
+  }
+  
+  li button:hover {
+    background-color: #8e6d49;
+  }

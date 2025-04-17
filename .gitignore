@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+
+# SQLite DB
+backend/books.db
+
+# Node
+node_modules/
+
+# Logs
+*.log
+
+# OS系
+.DS_Store
+Thumbs.db
