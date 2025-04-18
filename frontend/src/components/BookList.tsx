@@ -11,6 +11,7 @@ const BookList = () => {
     const [detailBook, setDetailBook] = useState<Book | null>(null);
     const [sortType, setSortType] = useState<string>("default");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -35,6 +36,10 @@ const BookList = () => {
         }
         sortOrReload();
     }, [sortType, sortOrder]);
+
+    const toggleDarkMode = () => {
+        setIsDarkMode((prev) => !prev);
+    };
 
     const handleDelete = async (id: number) => {
         try {
@@ -84,7 +89,16 @@ const BookList = () => {
       };
 
     return (
-        <div>
+        <div className={isDarkMode ? "dark book-list-wrapper" : "book-list-wrapper"}>
+            <div className="toggle-container">
+                <label className="toggle-switch">
+                    <input type="checkbox" checked={isDarkMode} onChange={toggleDarkMode} />
+                    <span className="slider"></span>
+                </label>
+                <span className="mode-label">
+                    {isDarkMode ? "🌙 ダークモード" : "☀️ ライトモード"}
+                </span>
+            </div>
             <BookForm reloadBooks={reloadBooks} />
             <h2>📚 本の一覧</h2>
             <div className="sort">

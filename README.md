@@ -17,7 +17,6 @@
 - **状態管理**: useState, useEffect
 - **スタイリング**: CSS
 - **ビルドツール**: Vite
-- **データ保存**: LocalStorage（今後 API + DB 対応予定）
 
 ## セットアップ手順
 
