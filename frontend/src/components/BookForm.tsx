@@ -10,7 +10,7 @@ const BookForm = ({ reloadBooks }:Props) => {
     const [title, setTitle] = useState("");
     const [author, setAuthor] = useState("");
     const [status, setStatus] = useState("unread");
-    const [category, setCategory] = useState("");
+    const [category, setCategory] = useState("-");
     const [rating, setRating] = useState(3);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +27,7 @@ const BookForm = ({ reloadBooks }:Props) => {
         setTitle("");
         setAuthor("");
         setStatus("unread");
-        setCategory("");
+        setCategory("-");
         setRating(3);
         alert("本を追加しました！");
         reloadBooks();
@@ -55,12 +55,14 @@ const BookForm = ({ reloadBooks }:Props) => {
                 <option value="reading">読書中</option>
                 <option value="finished">読了</option>
             </select>
-            <input
-                type="text"
-                placeholder="カテゴリ"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-            />
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="-">-</option>
+                <option value="novel">小説</option>
+                <option value="business">ビジネス</option>
+                <option value="skill">技術書</option>
+                <option value="manga">マンガ</option>
+                <option value="other">その他</option>
+            </select>
             <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
                 {[1, 2, 3, 4, 5].map((num) => (
                     <option key={num} value={num}>{num}</option>

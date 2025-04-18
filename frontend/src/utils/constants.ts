@@ -11,3 +11,12 @@ export const ratingMap: Record<number, string> = {
     4: "⭐⭐⭐⭐",
     5: "⭐⭐⭐⭐⭐",
 } as const;
+
+export const categoryMap: Record<string, string> = {
+    "-": "-",
+    novel: "小説",
+    business: "ビジネス",
+    skill: "技術書",
+    manga: "マンガ",
+    other: "その他",
+} as const;

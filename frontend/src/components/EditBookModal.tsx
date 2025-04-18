@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Book } from "../types";
-import { statusMap, ratingMap} from "../utils/constants"
+import { statusMap, ratingMap, categoryMap} from "../utils/constants"
 import "./EditBookModal.css"
 
 type Props = {
@@ -38,7 +38,14 @@ const EditBookModal = ({ book, onClose, onSave }: Props) => {
                             <option value="finished">読了</option>
                         </select>
                         <p>カテゴリ</p>
-                        <input value={category} onChange={(e) => setCategory(e.target.value)} />
+                        <select value={category} onChange={(e) => setCategory(e.target.value as Book["category"])}>
+                            <option value="-">-</option>
+                            <option value="novel">小説</option>
+                            <option value="business">ビジネス</option>
+                            <option value="skill">技術書</option>
+                            <option value="manga">マンガ</option>
+                            <option value="other">その他</option>
+                        </select>
                         <p>評価</p>
                         <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
                             {[1, 2, 3, 4, 5].map((num) => (
@@ -56,7 +63,7 @@ const EditBookModal = ({ book, onClose, onSave }: Props) => {
                         <p>タイトル : {title}</p>
                         <p>著者 : {author}</p>
                         <p>ステータス : {statusMap[book.status]}</p>
-                        <p>カテゴリ : {category}</p>
+                        <p>カテゴリ : {categoryMap[book.category]}</p>
                         <p>評価 : {ratingMap[rating]}</p>
                         <button onClick={() => setIsEditing(true)}>編集</button>
                         <button onClick={onClose}>キャンセル</button>

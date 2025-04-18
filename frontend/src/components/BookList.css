@@ -86,17 +86,17 @@ li p {
 }
 
 .info {
-  text-decoration:underline;
+  /* text-decoration:underline; */
 }
 
 .status {
   display: inline-block;
-  padding: .4em;
+  padding: .4em .6em;
   line-height: 1;
   color: #fff;
   text-decoration: none;
   border-radius: 2em 0 0 2em;
-  width: 40%;
+  width: fit-content;
 }
 
 .status:before {

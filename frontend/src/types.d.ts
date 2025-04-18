@@ -3,7 +3,7 @@ export type Book = {
     title: string;
     author: string;
     status: "unread" | "reading" | "finished";
-    category?: string;
+    category: "-" | "business" | "manga" | "novel" | "skill" | "other";
     rating: number;
     review?: string;
     cover_url?: string;
