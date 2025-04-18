@@ -37,6 +37,15 @@ const BookList = () => {
         sortOrReload();
     }, [sortType, sortOrder]);
 
+    useEffect(() => {
+        const savedMode = localStorage.getItem("darkMode");
+        if (savedMode === "true") setIsDarkMode(true);
+      }, []);
+      
+    useEffect(() => {
+        localStorage.setItem("darkMode", String(isDarkMode));
+    }, [isDarkMode]);
+
     const toggleDarkMode = () => {
         setIsDarkMode((prev) => !prev);
     };
