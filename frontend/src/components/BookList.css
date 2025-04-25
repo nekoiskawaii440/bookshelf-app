@@ -41,7 +41,7 @@ li p {
 }
 
 .book-list-wrapper {
-  width: 70%;
+  width: auto;
   background-color: #dac5a6;
   color: #333;
   min-height: 100vh;
@@ -50,7 +50,7 @@ li p {
 }
 
 .book-list-wrapper.dark {
-  width: 70%;
+  width: auto;
   background-color: #1e1e1e;
   color: #eee;
 }
@@ -192,4 +192,22 @@ li p {
 
 .finished {
   background-color: #2ecc71;
+}
+
+@media (max-width: 580px) {
+
+}
+@media (max-width: 580px) {
+  /* .book-list-wrapper{
+    width: auto;
+  } */
+  .sort {
+    margin: auto;
+    flex-direction: column;
+    align-items:flex-start;
+  }
+
+  .sort-order-btn {
+    margin-left: 0;
+  }
 }
