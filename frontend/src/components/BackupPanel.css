@@ -2,7 +2,13 @@
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  align-items: center;
   margin-bottom: 1rem;
+}
+
+.backup-panel .data-source {
+  margin-right: auto;
+  font-size: 0.9rem;
 }
 
 .backup-panel button {

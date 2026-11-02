@@ -1,57 +1,31 @@
-import { Preferences } from "@capacitor/preferences";
+import { Capacitor } from "@capacitor/core";
 import type { Book } from "../types";
+import { apiStore } from "./apiStore";
+import { localStore } from "./localStore";
+import type { BookInput, BookStore } from "./types";
 
-// 端末内(Android SharedPreferences)に JSON として保存する。
-// WebView の localStorage は OS に消される可能性があるため使わない。
-const STORAGE_KEY = "books";
-const NEXT_ID_KEY = "books_next_id";
+export type { BookInput } from "./types";
 
-export type BookInput = Omit<Book, "id" | "created_at" | "updated_at">;
+export type DataSource = "api" | "local";
 
-const now = () => new Date().toISOString();
-
-const readAll = async (): Promise<Book[]> => {
-    const { value } = await Preferences.get({ key: STORAGE_KEY });
-    return value ? (JSON.parse(value) as Book[]) : [];
+// 保存先の決定:
+//   1. 環境変数 VITE_DATA_SOURCE ("api" | "local") があればそれに従う
+//   2. なければ Android アプリ(タブレット)では端末内、ブラウザでは FastAPI
+const resolveDataSource = (): DataSource => {
+    const env = import.meta.env.VITE_DATA_SOURCE;
+    if (env === "api" || env === "local") return env;
+    return Capacitor.isNativePlatform() ? "local" : "api";
 };
 
-const writeAll = async (books: Book[]) => {
-    await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(books) });
-};
+export const dataSource: DataSource = resolveDataSource();
 
-const nextId = async (books: Book[]): Promise<number> => {
-    const { value } = await Preferences.get({ key: NEXT_ID_KEY });
-    const maxId = books.reduce((max, b) => Math.max(max, b.id), 0);
-    const id = Math.max(Number(value ?? 1), maxId + 1);
-    await Preferences.set({ key: NEXT_ID_KEY, value: String(id + 1) });
-    return id;
-};
+const store: BookStore = dataSource === "local" ? localStore : apiStore;
 
-export const fetchBooks = async (): Promise<Book[]> => readAll();
-
-export const addBook = async (book: BookInput): Promise<Book> => {
-    const books = await readAll();
-    const timestamp = now();
-    const created: Book = { ...book, id: await nextId(books), created_at: timestamp, updated_at: timestamp };
-    await writeAll([...books, created]);
-    return created;
-};
-
-export const deleteBook = async (id: number): Promise<void> => {
-    const books = await readAll();
-    if (!books.some((b) => b.id === id)) throw new Error("Book not found");
-    await writeAll(books.filter((b) => b.id !== id));
-};
-
-export const updateBook = async (id: number, updatedData: Partial<BookInput>): Promise<Book> => {
-    const books = await readAll();
-    const index = books.findIndex((b) => b.id === id);
-    if (index === -1) throw new Error("Book not found");
-    const updated: Book = { ...books[index], ...updatedData, id, updated_at: now() };
-    books[index] = updated;
-    await writeAll(books);
-    return updated;
-};
+export const fetchBooks = (): Promise<Book[]> => store.fetchBooks();
+export const addBook = (book: BookInput): Promise<Book> => store.addBook(book);
+export const deleteBook = (id: number): Promise<void> => store.deleteBook(id);
+export const updateBook = (id: number, updatedData: Partial<BookInput>): Promise<Book> =>
+    store.updateBook(id, updatedData);
 
 // ---- バックアップ (JSON) ----
 
@@ -59,8 +33,8 @@ export type Backup = { version: 1; exported_at: string; books: Book[] };
 
 export const createBackup = async (): Promise<Backup> => ({
     version: 1,
-    exported_at: now(),
-    books: await readAll(),
+    exported_at: new Date().toISOString(),
+    books: await store.fetchBooks(),
 });
 
 const STATUSES = ["unread", "reading", "finished"];
@@ -83,15 +57,16 @@ export const restoreBackup = async (json: string): Promise<number> => {
     if (!Array.isArray(list) || !list.every(isBook)) {
         throw new Error("バックアップファイルの形式が正しくありません");
     }
-    const timestamp = now();
+    const timestamp = new Date().toISOString();
     const books: Book[] = list.map((b) => ({
         ...b,
         category: b.category ?? "-",
         rating: b.rating ?? 3,
+        review: b.review ?? "",
+        cover_url: b.cover_url ?? "",
         created_at: b.created_at ?? timestamp,
         updated_at: b.updated_at ?? timestamp,
     }));
-    await writeAll(books);
-    await Preferences.remove({ key: NEXT_ID_KEY });
+    await store.replaceAll(books);
     return books.length;
 };

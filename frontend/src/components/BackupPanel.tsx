@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { exportBackup } from "../api/backup";
-import { restoreBackup } from "../api/books";
+import { dataSource, restoreBackup } from "../api/books";
 import "./BackupPanel.css";
 
 type Props = {
@@ -36,6 +36,9 @@ const BackupPanel = ({ reloadBooks }: Props) => {
 
     return (
         <div className="backup-panel">
+            <span className="data-source">
+                保存先：{dataSource === "local" ? "この端末" : "サーバー"}
+            </span>
             <button type="button" onClick={handleExport}>バックアップ</button>
             <button type="button" onClick={() => fileInput.current?.click()}>復元</button>
             <input

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List
 from database import get_db_connection
-from schemas import BookCreate, Book
+from schemas import BookCreate, Book, BookRestore
 
 app = FastAPI()
 
@@ -117,5 +117,26 @@ def update_book(book_id: int, book: BookCreate):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+# バックアップから全データを置き換えるエンドポイント
+@app.post("/books/restore")
+def restore_books(books: List[BookRestore]):
+    conn = get_db_connection()
+    try:
+        with conn:  # 失敗時はロールバック
+            conn.execute("DELETE FROM books")
+            conn.execute("DELETE FROM sqlite_sequence WHERE name = 'books'")
+            conn.executemany("""
+                INSERT INTO books (id, title, author, status, category, rating, review, cover_url, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP))
+            """, [
+                (b.id, b.title, b.author, b.status, b.category, b.rating, b.review, b.cover_url, b.created_at, b.updated_at)
+                for b in books
+            ])
+        return {"message": f"{len(books)} books restored."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     finally:
         conn.close()

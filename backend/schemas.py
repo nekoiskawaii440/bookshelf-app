@@ -15,6 +15,12 @@ class BookBase(BaseModel):
 class BookCreate(BookBase):
     pass
 
+# バックアップ復元用のデータ(ID・日時も保持する)
+class BookRestore(BookBase):
+    id: int
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
 # レスポンス用のデータ
 class Book(BookBase):
     id: int
