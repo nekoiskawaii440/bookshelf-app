@@ -1,4 +1,4 @@
-import type { Book } from "../types";
+import type { Book, Reader } from "../types";
 
 export type BookInput = Omit<Book, "id" | "created_at" | "updated_at">;
 
@@ -9,7 +9,12 @@ export type BookStore = {
     deleteBook: (id: number) => Promise<void>;
     updateBook: (id: number, updatedData: Partial<BookInput>) => Promise<Book>;
     // 全データを置き換える(バックアップの復元用。表紙も全削除される)
-    replaceAll: (books: Book[]) => Promise<void>;
+    replaceAll: (books: Book[], readers: Reader[]) => Promise<void>;
+    // 読者の管理(読者を削除すると、本に付いたその読者の記録も削除される)
+    fetchReaders: () => Promise<Reader[]>;
+    addReader: (name: string) => Promise<Reader>;
+    renameReader: (id: number, name: string) => Promise<Reader>;
+    deleteReader: (id: number) => Promise<void>;
     // 表紙(JPEG の base64)を保存し、更新後の本を返す
     saveCover: (id: number, jpegBase64: string) => Promise<Book>;
     removeCover: (id: number) => Promise<Book>;

@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { testGoogleBooksApiKey } from "../api/lookup";
 import { getGoogleBooksApiKey, setGoogleBooksApiKey } from "../api/settings";
+import type { Reader } from "../types";
+import ReaderManager from "./ReaderManager";
 import { useToast } from "./toastContext";
 
 type Props = {
+    readers: Reader[];
+    onReadersChanged: () => void;
     onClose: () => void;
 };
 
-const SettingsDialog = ({ onClose }: Props) => {
+const SettingsDialog = ({ readers, onReadersChanged, onClose }: Props) => {
     const toast = useToast();
     const [apiKey, setApiKey] = useState("");
     const [testing, setTesting] = useState(false);
@@ -34,6 +38,7 @@ const SettingsDialog = ({ onClose }: Props) => {
         <div className="modal-backdrop" onClick={onClose}>
             <div className="modal settings" onClick={(e) => e.stopPropagation()}>
                 <h2>設定</h2>
+                <ReaderManager readers={readers} onChanged={onReadersChanged} />
                 <div className="field">
                     <label htmlFor="google-key">Google Books API キー（表紙の自動取得に使用）</label>
                     <div className="row">
@@ -56,8 +61,8 @@ const SettingsDialog = ({ onClose }: Props) => {
                     </p>
                 </div>
                 <div className="modal-actions">
-                    <button type="button" className="secondary" onClick={onClose}>キャンセル</button>
-                    <button type="button" className="primary" onClick={handleSave}>保存</button>
+                    <button type="button" className="secondary" onClick={onClose}>閉じる</button>
+                    <button type="button" className="primary" onClick={handleSave}>APIキーを保存</button>
                 </div>
             </div>
         </div>

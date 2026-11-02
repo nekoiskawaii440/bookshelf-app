@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
-import { normalizeIsbn } from "../utils/isbn";
+import type { IScannerControls } from "@zxing/browser";
+import { createIsbnReader, decodeIsbnFromImage, toIsbn } from "../utils/barcode";
 
 type Props = {
     onDetected: (isbn: string) => void;
@@ -11,40 +10,61 @@ type Props = {
 // カメラで ISBN のバーコード(EAN-13)を読み取る。
 // 本の裏表紙には 2 段のバーコードがあり、上段(978/979 で始まる)が ISBN。
 // 下段(192 で始まる分類・価格コード)は無視する。
+// プレビュー映像で読めない場合は、端末のカメラアプリで撮った写真(高解像度)から読み取れる。
 const BarcodeScanner = ({ onDetected, onClose }: Props) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const photoInput = useRef<HTMLInputElement>(null);
     const [error, setError] = useState("");
     const [ignored, setIgnored] = useState(false);
+    const [resolution, setResolution] = useState("");
+    const [photoNote, setPhotoNote] = useState("");
+    const doneRef = useRef(false);
+    const controlsRef = useRef<IScannerControls | undefined>(undefined);
+
+    const finish = (isbn: string) => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        controlsRef.current?.stop();
+        onDetected(isbn);
+    };
+    const finishRef = useRef(finish);
+    finishRef.current = finish;
 
     useEffect(() => {
-        const hints = new Map<DecodeHintType, unknown>([
-            [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13]],
-            [DecodeHintType.TRY_HARDER, true],
-        ]);
-        const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 });
-        let controls: IScannerControls | undefined;
-        let stopped = false;
+        const reader = createIsbnReader();
+        let cancelled = false;
 
         reader
             .decodeFromConstraints(
-                { audio: false, video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
+                {
+                    audio: false,
+                    // できるだけ高い解像度を要求する(端末が対応する範囲で選ばれる)
+                    video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+                },
                 videoRef.current ?? undefined,
-                (result, _err, ctl) => {
-                    if (!result || stopped) return;
-                    const text = result.getText();
-                    const isbn = /^97[89]/.test(text) ? normalizeIsbn(text) : null;
-                    if (!isbn) {
-                        setIgnored(true);
-                        return;
-                    }
-                    stopped = true;
-                    ctl.stop();
-                    onDetected(isbn);
+                (result) => {
+                    if (!result) return;
+                    const isbn = toIsbn(result.getText());
+                    if (isbn) finishRef.current(isbn);
+                    else setIgnored(true);
                 },
             )
-            .then((c) => {
-                controls = c;
-                if (stopped) c.stop();
+            .then(async (controls) => {
+                controlsRef.current = controls;
+                if (cancelled || doneRef.current) {
+                    controls.stop();
+                    return;
+                }
+                const stream = videoRef.current?.srcObject;
+                const track = stream instanceof MediaStream ? stream.getVideoTracks()[0] : undefined;
+                if (!track) return;
+                // 連続オートフォーカスに対応していれば有効にする
+                const caps = (track.getCapabilities?.() ?? {}) as { focusMode?: string[] };
+                if (caps.focusMode?.includes("continuous")) {
+                    await track.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => {});
+                }
+                const s = track.getSettings();
+                if (s.width && s.height) setResolution(`${s.width}×${s.height}`);
             })
             .catch((e: unknown) => {
                 console.error(e);
@@ -59,10 +79,25 @@ const BarcodeScanner = ({ onDetected, onClose }: Props) => {
             });
 
         return () => {
-            stopped = true;
-            controls?.stop();
+            cancelled = true;
+            controlsRef.current?.stop();
         };
-    }, [onDetected]);
+    }, []);
+
+    const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        setPhotoNote("写真を解析中…");
+        try {
+            const isbn = await decodeIsbnFromImage(file);
+            if (isbn) finish(isbn);
+            else setPhotoNote("写真からバーコードを読み取れませんでした。バーコードが画面の横幅の半分以上に写るように、明るい場所で撮り直してください。");
+        } catch (error) {
+            console.error(error);
+            setPhotoNote("写真を読み込めませんでした。");
+        }
+    };
 
     return (
         <div className="modal-backdrop scanner-backdrop" onClick={onClose}>
@@ -74,13 +109,22 @@ const BarcodeScanner = ({ onDetected, onClose }: Props) => {
                     <div className="scanner-view">
                         <video ref={videoRef} muted playsInline />
                         <div className="scanner-guide" />
+                        {resolution && <span className="scanner-resolution">カメラ {resolution}</span>}
                     </div>
                 )}
                 <p className="hint">
                     裏表紙の上段のバーコード（978 で始まる番号）を枠に合わせてください。
+                    近づけすぎるとピントが合わないため、15〜20cm ほど離し、明るい場所で試してください。
                     {ignored && " 下段のバーコードは ISBN ではないため読み取りません。"}
                 </p>
+                <p className="hint">
+                    反応しない場合は「写真で読み取る」でバーコードを撮影してください（端末のカメラで高画質に撮影して解析します）。
+                </p>
+                {photoNote && <p className="hint">{photoNote}</p>}
+                <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={handlePhoto} />
                 <div className="modal-actions">
+                    <button type="button" className="secondary" onClick={() => photoInput.current?.click()}>写真で読み取る</button>
+                    <span className="spacer" />
                     <button type="button" className="secondary" onClick={onClose}>キャンセル</button>
                 </div>
             </div>

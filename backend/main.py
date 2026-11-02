@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from database import get_db_connection, migrate
-from schemas import Book, BookCreate, BookRestore, CoverUpload
+from schemas import Book, BookCreate, CoverUpload, Reader, ReaderBase, RestorePayload
 
 app = FastAPI()
 
@@ -49,11 +49,39 @@ def cover_path(book_id: int) -> Path:
     return COVER_DIR / f"{book_id}.jpg"
 
 
+def reader_entries(conn, book_ids=None) -> dict:
+    """本 ID → 読者ごとの状態・評価の一覧"""
+    query = "SELECT book_id, reader_id, status, rating FROM book_readers"
+    params = []
+    if book_ids is not None:
+        query += f" WHERE book_id IN ({', '.join('?' for _ in book_ids)})"
+        params = list(book_ids)
+    entries = {}
+    for row in conn.execute(query + " ORDER BY reader_id", params):
+        entries.setdefault(row["book_id"], []).append(
+            {"reader_id": row["reader_id"], "status": row["status"], "rating": row["rating"]}
+        )
+    return entries
+
+
+def to_book(row, entries: dict) -> Book:
+    return Book(**dict(row), readers=entries.get(row["id"], []))
+
+
 def fetch_book(conn, book_id: int) -> Book:
     row = conn.execute("SELECT * FROM books WHERE id = ?", (book_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Book not found")
-    return Book(**dict(row))
+    return to_book(row, reader_entries(conn, [book_id]))
+
+
+def save_reader_entries(conn, book_id: int, book: BookCreate):
+    conn.execute("DELETE FROM book_readers WHERE book_id = ?", (book_id,))
+    valid = {row["id"] for row in conn.execute("SELECT id FROM readers")}
+    conn.executemany(
+        "INSERT INTO book_readers (book_id, reader_id, status, rating) VALUES (?, ?, ?, ?)",
+        [(book_id, e.reader_id, e.status, e.rating) for e in book.readers if e.reader_id in valid],
+    )
 
 
 @app.get("/books")
@@ -61,7 +89,8 @@ def get_books():
     conn = get_db_connection()
     try:
         rows = conn.execute("SELECT * FROM books").fetchall()
-        return [Book(**dict(row)) for row in rows]
+        entries = reader_entries(conn)
+        return [to_book(row, entries) for row in rows]
     finally:
         conn.close()
 
@@ -84,6 +113,7 @@ def create_book(book: BookCreate):
             f"INSERT INTO books ({', '.join(FIELDS)}) VALUES ({', '.join('?' for _ in FIELDS)})",
             [getattr(book, f) for f in FIELDS],
         )
+        save_reader_entries(conn, cursor.lastrowid, book)
         conn.commit()
         return fetch_book(conn, cursor.lastrowid)
     except HTTPException:
@@ -101,6 +131,7 @@ def delete_book(book_id: int):
     try:
         fetch_book(conn, book_id)
         conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+        conn.execute("DELETE FROM book_readers WHERE book_id = ?", (book_id,))
         conn.commit()
         cover_path(book_id).unlink(missing_ok=True)
         return {"message": f"Book with id {book_id} has been deleted."}
@@ -118,6 +149,7 @@ def update_book(book_id: int, book: BookCreate):
             f"UPDATE books SET {', '.join(f'{f} = ?' for f in FIELDS)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             [getattr(book, f) for f in FIELDS] + [book_id],
         )
+        save_reader_entries(conn, book_id, book)
         conn.commit()
         return fetch_book(conn, book_id)
     except HTTPException:
@@ -178,12 +210,16 @@ def delete_cover(book_id: int):
 
 # バックアップから全データを置き換えるエンドポイント(表紙は別途アップロードする)
 @app.post("/books/restore")
-def restore_books(books: List[BookRestore]):
+def restore_books(payload: RestorePayload):
     conn = get_db_connection()
     try:
         with conn:  # 失敗時はロールバック
-            conn.execute("DELETE FROM books")
-            conn.execute("DELETE FROM sqlite_sequence WHERE name = 'books'")
+            for table in ("books", "readers", "book_readers"):
+                conn.execute(f"DELETE FROM {table}")
+            conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('books', 'readers')")
+            conn.executemany(
+                "INSERT INTO readers (id, name) VALUES (?, ?)", [(r.id, r.name) for r in payload.readers]
+            )
             columns = ["id", *FIELDS, "cover_url", "created_at", "updated_at"]
             conn.executemany(
                 f"""
@@ -193,13 +229,61 @@ def restore_books(books: List[BookRestore]):
                 """,
                 [
                     [b.id, *[getattr(b, f) for f in FIELDS], "", b.created_at, b.updated_at]
-                    for b in books
+                    for b in payload.books
                 ],
             )
+            for b in payload.books:
+                save_reader_entries(conn, b.id, b)
         shutil.rmtree(COVER_DIR, ignore_errors=True)
-        return {"message": f"{len(books)} books restored."}
+        return {"message": f"{len(payload.books)} books restored."}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
+
+
+# 読者の一覧・追加・名前変更・削除
+@app.get("/readers", response_model=List[Reader])
+def get_readers():
+    conn = get_db_connection()
+    try:
+        return [Reader(**dict(row)) for row in conn.execute("SELECT id, name FROM readers ORDER BY id")]
+    finally:
+        conn.close()
+
+
+@app.post("/readers", response_model=Reader)
+def create_reader(reader: ReaderBase):
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("INSERT INTO readers (name) VALUES (?)", (reader.name,))
+        conn.commit()
+        return Reader(id=cursor.lastrowid, name=reader.name)
+    finally:
+        conn.close()
+
+
+@app.put("/readers/{reader_id}", response_model=Reader)
+def update_reader(reader_id: int, reader: ReaderBase):
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("UPDATE readers SET name = ? WHERE id = ?", (reader.name, reader_id))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Reader not found")
+        conn.commit()
+        return Reader(id=reader_id, name=reader.name)
+    finally:
+        conn.close()
+
+
+@app.delete("/readers/{reader_id}", response_class=JSONResponse)
+def delete_reader(reader_id: int):
+    conn = get_db_connection()
+    try:
+        conn.execute("DELETE FROM readers WHERE id = ?", (reader_id,))
+        conn.execute("DELETE FROM book_readers WHERE reader_id = ?", (reader_id,))
+        conn.commit()
+        return {"message": f"Reader with id {reader_id} has been deleted."}
     finally:
         conn.close()
 

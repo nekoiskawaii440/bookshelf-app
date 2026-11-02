@@ -1,4 +1,4 @@
-import type { Book } from "../types";
+import type { Book, Reader } from "../types";
 import { API_BASE } from "./config";
 import type { BookInput, BookStore } from "./types";
 
@@ -16,8 +16,8 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 const toBody = (b: BookInput) => {
-    const { title, author, publisher, isbn, status, category, rating, review } = b;
-    return JSON.stringify({ title, author, publisher, isbn, status, category, rating, review });
+    const { title, author, publisher, isbn, status, category, rating, review, readers } = b;
+    return JSON.stringify({ title, author, publisher, isbn, status, category, rating, review, readers });
 };
 
 export const apiStore: BookStore = {
@@ -35,8 +35,16 @@ export const apiStore: BookStore = {
         return request<Book>(`/books/${id}`, { method: "PUT", body: toBody({ ...current, ...updatedData }) });
     },
 
-    replaceAll: async (books: Book[]) => {
-        await request("/books/restore", { method: "POST", body: JSON.stringify(books) });
+    replaceAll: async (books: Book[], readers: Reader[]) => {
+        await request("/books/restore", { method: "POST", body: JSON.stringify({ books, readers }) });
+    },
+
+    fetchReaders: () => request<Reader[]>("/readers"),
+    addReader: (name: string) => request<Reader>("/readers", { method: "POST", body: JSON.stringify({ name }) }),
+    renameReader: (id: number, name: string) =>
+        request<Reader>(`/readers/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
+    deleteReader: async (id: number) => {
+        await request(`/readers/${id}`, { method: "DELETE" });
     },
 
     saveCover: (id: number, jpegBase64: string) =>

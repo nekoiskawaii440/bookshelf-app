@@ -2,19 +2,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { addBook, removeCover, saveCover, updateBook, type BookInput } from "../api/books";
 import { getImageDataUrl } from "../api/http";
 import { formatStatuses, lookupByIsbn, searchByTitle, type BookInfo } from "../api/lookup";
-import type { Book, BookStatus } from "../types";
-import { STATUS_OPTIONS } from "../utils/constants";
+import type { Book, Reader, ReaderEntry } from "../types";
 import { jpegDataUrl, toJpegBase64 } from "../utils/image";
 import { normalizeIsbn } from "../utils/isbn";
 import BarcodeScanner from "./BarcodeScanner";
 import CoverImage from "./CoverImage";
-import RatingInput from "./RatingInput";
+import StatusRatingInput from "./StatusRatingInput";
 import { useToast } from "./toastContext";
 
 type Props = {
     // 未指定なら新規追加
     book?: Book;
     genres: string[];
+    readers: Reader[];
+    // 新規追加時に最初から選んでおく読者(読者の本棚から追加した場合)
+    defaultReaderId?: number | null;
     // 開いたらすぐにバーコード読み取りを始める
     startWithScan?: boolean;
     onClose: () => void;
@@ -26,11 +28,18 @@ type CoverChange = { kind: "keep" } | { kind: "new"; base64: string } | { kind: 
 
 const empty: BookInput = {
     title: "", author: "", publisher: "", isbn: "", status: "unread", category: "", rating: 3, review: "", cover_url: "",
+    readers: [],
 };
 
-const BookEditor = ({ book, genres, startWithScan = false, onClose, onSaved }: Props) => {
+const newEntry = (reader_id: number): ReaderEntry => ({ reader_id, status: "unread", rating: 3 });
+
+const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithScan = false, onClose, onSaved }: Props) => {
     const toast = useToast();
-    const [form, setForm] = useState<BookInput>(book ? { ...empty, ...book } : empty);
+    const [form, setForm] = useState<BookInput>(
+        book
+            ? { ...empty, ...book }
+            : { ...empty, readers: defaultReaderId !== null ? [newEntry(defaultReaderId)] : [] },
+    );
     const [cover, setCover] = useState<CoverChange>({ kind: "keep" });
     const [isbnInput, setIsbnInput] = useState(book?.isbn ?? "");
     const [looking, setLooking] = useState(false);
@@ -290,25 +299,57 @@ const BookEditor = ({ book, genres, startWithScan = false, onClose, onSaved }: P
                                 ))}
                             </div>
                         </div>
-                        <div className="field">
-                            <span className="label">読書の状態</span>
-                            <div className="segmented">
-                                {STATUS_OPTIONS.map((s) => (
-                                    <button
-                                        key={s.value}
-                                        type="button"
-                                        className={`${s.value} ${form.status === s.value ? "selected" : ""}`}
-                                        onClick={() => set("status", s.value as BookStatus)}
-                                    >
-                                        {s.label}
-                                    </button>
-                                ))}
+                        {readers.length > 0 && (
+                            <div className="field">
+                                <span className="label">読者（この本を読む人。複数選択可）</span>
+                                <div className="chips">
+                                    {readers.map((r) => {
+                                        const on = form.readers.some((e) => e.reader_id === r.id);
+                                        return (
+                                            <button
+                                                key={r.id}
+                                                type="button"
+                                                className={`chip ${on ? "selected" : ""}`}
+                                                aria-pressed={on}
+                                                onClick={() =>
+                                                    set(
+                                                        "readers",
+                                                        on
+                                                            ? form.readers.filter((e) => e.reader_id !== r.id)
+                                                            : [...form.readers, newEntry(r.id)].sort((a, b) => a.reader_id - b.reader_id),
+                                                    )
+                                                }
+                                            >
+                                                {r.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                        <div className="field">
-                            <span className="label">評価</span>
-                            <RatingInput value={form.rating} onChange={(v) => set("rating", v)} />
-                        </div>
+                        )}
+                        {form.readers.length > 0 ? (
+                            form.readers.map((e) => (
+                                <div className="field" key={e.reader_id}>
+                                    <span className="label">{readers.find((r) => r.id === e.reader_id)?.name} さんの読書状態と評価</span>
+                                    <StatusRatingInput
+                                        status={e.status}
+                                        rating={e.rating}
+                                        onChange={(v) =>
+                                            set("readers", form.readers.map((x) => (x.reader_id === e.reader_id ? { ...x, ...v } : x)))
+                                        }
+                                    />
+                                </div>
+                            ))
+                        ) : (
+                            <div className="field">
+                                <span className="label">読書の状態と評価</span>
+                                <StatusRatingInput
+                                    status={form.status}
+                                    rating={form.rating}
+                                    onChange={(v) => setForm((f) => ({ ...f, ...v }))}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 

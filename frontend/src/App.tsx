@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { dataSource } from "./api/books";
+import { useCallback, useEffect, useState } from "react";
+import { dataSource, fetchReaders } from "./api/books";
+import type { Reader } from "./types";
 import BackupPanel from "./components/BackupPanel";
 import BookList from "./components/BookList";
 import SettingsDialog from "./components/SettingsDialog";
@@ -18,6 +19,19 @@ function App() {
     const [isDarkMode, setIsDarkMode] = useState(loadDarkMode);
     const [reloadKey, setReloadKey] = useState(0);
     const [showSettings, setShowSettings] = useState(false);
+    const [readers, setReaders] = useState<Reader[]>([]);
+
+    const reloadReaders = useCallback(async () => {
+        try {
+            setReaders(await fetchReaders());
+        } catch (error) {
+            console.error(error);
+        }
+    }, []);
+
+    useEffect(() => {
+        reloadReaders();
+    }, [reloadReaders, reloadKey]);
 
     useEffect(() => {
         document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
@@ -42,8 +56,14 @@ function App() {
                     <span>{isDarkMode ? "ダーク" : "ライト"}</span>
                 </label>
             </header>
-            <BookList reloadKey={reloadKey} />
-            {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+            <BookList reloadKey={reloadKey} readers={readers} />
+            {showSettings && (
+                <SettingsDialog
+                    readers={readers}
+                    onReadersChanged={() => setReloadKey((k) => k + 1)}
+                    onClose={() => setShowSettings(false)}
+                />
+            )}
         </ToastProvider>
     );
 }

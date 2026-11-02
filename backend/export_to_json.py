@@ -20,6 +20,15 @@ def main() -> None:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute("SELECT * FROM books ORDER BY id").fetchall()
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    readers = []
+    entries = {}
+    if "readers" in tables:
+        readers = [dict(r) for r in conn.execute("SELECT id, name FROM readers ORDER BY id")]
+        for r in conn.execute("SELECT book_id, reader_id, status, rating FROM book_readers ORDER BY reader_id"):
+            entries.setdefault(r["book_id"], []).append(
+                {"reader_id": r["reader_id"], "status": r["status"], "rating": r["rating"]}
+            )
     conn.close()
 
     books = []
@@ -29,13 +38,15 @@ def main() -> None:
         book["rating"] = book.get("rating") or 3
         book["review"] = book.get("review") or ""
         book.pop("cover_url", None)
+        book["readers"] = entries.get(book["id"], [])
         cover = COVER_DIR / f"{book['id']}.jpg"
         if cover.exists():
             book["cover_data"] = base64.b64encode(cover.read_bytes()).decode("ascii")
         books.append(book)
 
     backup = {
-        "version": 2,
+        "version": 3,
+        "readers": readers,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "books": books,
     }
