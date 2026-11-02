@@ -3,6 +3,7 @@ import { fetchBooks, deleteBook, updateBook } from "../api/books";
 import { Book } from "../types";
 import EditBookModal from "./EditBookModal";
 import BookForm from "./BookForm";
+import BackupPanel from "./BackupPanel";
 import { statusMap, ratingMap } from "../utils/constants"
 import "./BookList.css"
 
@@ -108,6 +109,7 @@ const BookList = () => {
                     {isDarkMode ? "🌙 ダークモード" : "☀️ ライトモード"}
                 </span>
             </div>
+            <BackupPanel reloadBooks={reloadBooks} />
             <BookForm reloadBooks={reloadBooks} />
             <h2>📚 本の一覧</h2>
             <div className="sort">

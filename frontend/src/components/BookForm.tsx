@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { addBook } from "../api/books";
+import type { Book } from "../types";
 import "./BookForm.css"
 
 type Props = {
@@ -9,8 +10,8 @@ type Props = {
 const BookForm = ({ reloadBooks }:Props) => {
     const [title, setTitle] = useState("");
     const [author, setAuthor] = useState("");
-    const [status, setStatus] = useState("unread");
-    const [category, setCategory] = useState("-");
+    const [status, setStatus] = useState<Book["status"]>("unread");
+    const [category, setCategory] = useState<Book["category"]>("-");
     const [rating, setRating] = useState(3);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -50,12 +51,12 @@ const BookForm = ({ reloadBooks }:Props) => {
                 onChange={(e) => setAuthor(e.target.value)}
                 required
             />
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select value={status} onChange={(e) => setStatus(e.target.value as Book["status"])}>
                 <option value="unread">未読</option>
                 <option value="reading">読書中</option>
                 <option value="finished">読了</option>
             </select>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <select value={category} onChange={(e) => setCategory(e.target.value as Book["category"])}>
                 <option value="-">-</option>
                 <option value="novel">小説</option>
                 <option value="business">ビジネス</option>
