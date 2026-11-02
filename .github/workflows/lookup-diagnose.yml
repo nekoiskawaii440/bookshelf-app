@@ -9,25 +9,11 @@ on:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    env:
-      ISBNS: "9784102472317 4102472312 9784167275730 9784101010137"
     steps:
-      - name: Query APIs
+      - name: NDL queries
         run: |
-          for isbn in $ISBNS; do
-            echo "################ $isbn"
-            echo "=== NDL OpenSearch"
-            curl -sS -m 20 -w "\nHTTP %{http_code}\n" "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=$isbn&cnt=5" | head -c 4000; echo
-            echo "=== openBD"
-            curl -sS -m 20 -w "\nHTTP %{http_code}\n" "https://api.openbd.jp/v1/get?isbn=$isbn" | head -c 1500; echo
-            echo "=== Google Books (no key)"
-            curl -sS -m 20 -w "\nHTTP %{http_code}\n" "https://www.googleapis.com/books/v1/volumes?q=isbn:$isbn" | head -c 2500; echo
-          done
-      - name: Probe cover URLs
-        run: |
-          for isbn in $ISBNS; do
-            echo "=== $isbn"
-            for u in "https://cover.openbd.jp/$isbn.jpg" "https://ndlsearch.ndl.go.jp/thumbnail/$isbn.jpg"; do
-              curl -sS -m 20 -o /dev/null -w "$u -> HTTP %{http_code} %{content_type} %{size_download}B\n" "$u" || true
-            done
-          done
+          q() { echo "=== $1"; curl -sS -m 30 -w "\nHTTP %{http_code}\n" "$1" | head -c ${2:-6000}; echo; sleep 5; }
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=4102472312&cnt=5"
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?title=%E6%B2%B9%E7%94%B0%E7%88%86%E7%A0%B4&cnt=5" 12000
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?title=%E6%B2%B9%E7%94%B0%E7%88%86%E7%A0%B4&mediatype=books&cnt=5" 3000
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=9784101010137&cnt=5" 6000
