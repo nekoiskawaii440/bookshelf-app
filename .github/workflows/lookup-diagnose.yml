@@ -13,7 +13,6 @@ jobs:
       - name: NDL queries
         run: |
           q() { echo "=== $1"; curl -sS -m 30 -w "\nHTTP %{http_code}\n" "$1" | head -c ${2:-6000}; echo; sleep 5; }
-          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=4102472312&cnt=5"
-          q "https://ndlsearch.ndl.go.jp/api/opensearch?title=%E6%B2%B9%E7%94%B0%E7%88%86%E7%A0%B4&cnt=5" 12000
-          q "https://ndlsearch.ndl.go.jp/api/opensearch?title=%E6%B2%B9%E7%94%B0%E7%88%86%E7%A0%B4&mediatype=books&cnt=5" 3000
-          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=9784101010137&cnt=5" 6000
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=9784102472316&cnt=5" 800
+          q "https://ndlsearch.ndl.go.jp/api/opensearch?isbn=4102472312&cnt=5" 800
+          q "https://api.openbd.jp/v1/get?isbn=9784102472316" 300
