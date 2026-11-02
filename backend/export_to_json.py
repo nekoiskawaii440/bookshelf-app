@@ -3,10 +3,14 @@
 使い方:
     python export_to_json.py [books.db] [出力先.json]
 """
+import base64
 import json
 import sqlite3
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+COVER_DIR = Path(__file__).resolve().parent / "covers"
 
 
 def main() -> None:
@@ -24,11 +28,14 @@ def main() -> None:
         book["category"] = book.get("category") or "-"
         book["rating"] = book.get("rating") or 3
         book["review"] = book.get("review") or ""
-        book["cover_url"] = book.get("cover_url") or ""
+        book.pop("cover_url", None)
+        cover = COVER_DIR / f"{book['id']}.jpg"
+        if cover.exists():
+            book["cover_data"] = base64.b64encode(cover.read_bytes()).decode("ascii")
         books.append(book)
 
     backup = {
-        "version": 1,
+        "version": 2,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "books": books,
     }

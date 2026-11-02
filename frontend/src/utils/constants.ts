@@ -1,22 +1,15 @@
-export const statusMap: Record<string, string> = {
+import type { BookStatus } from "../types";
+
+export const STATUS_OPTIONS: { value: BookStatus; label: string }[] = [
+    { value: "unread", label: "未読" },
+    { value: "reading", label: "読書中" },
+    { value: "finished", label: "読了" },
+];
+
+export const statusMap: Record<BookStatus, string> = {
     unread: "未読",
     reading: "読書中",
     finished: "読了",
-} as const;
+};
 
-export const ratingMap: Record<number, string> = {
-    1: "★☆☆☆☆",
-    2: "★★☆☆☆",
-    3: "★★★☆☆",
-    4: "★★★★☆",
-    5: "★★★★★",
-} as const;
-
-export const categoryMap: Record<string, string> = {
-    "-": "-",
-    novel: "小説",
-    business: "ビジネス",
-    skill: "技術書",
-    manga: "マンガ",
-    other: "その他",
-} as const;
+export const stars = (rating: number) => "★".repeat(rating) + "☆".repeat(5 - rating);

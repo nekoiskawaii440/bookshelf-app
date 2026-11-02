@@ -1,12 +1,17 @@
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import type { Book } from "../types";
+import { jpegDataUrl } from "../utils/image";
 import type { BookInput, BookStore } from "./types";
 
-// 端末内に JSON として保存する(タブレット版)。
-// Android では SharedPreferences、ブラウザでは localStorage に保存される。
-// WebView の localStorage は OS に消される可能性があるため直接は使わない。
+// 端末内に保存する(タブレット版)。
+//   - 書誌データ: JSON として Preferences(Android では SharedPreferences)に保存
+//     (WebView の localStorage は OS に消される可能性があるため直接は使わない)
+//   - 表紙: アプリ専用領域(Directory.Data)の covers/ に JPEG で保存し、cover_url にそのパスを持つ
 const STORAGE_KEY = "books";
 const NEXT_ID_KEY = "books_next_id";
+const COVER_DIR = "covers";
 
 const now = () => new Date().toISOString();
 
@@ -27,35 +32,100 @@ const nextId = async (books: Book[]): Promise<number> => {
     return id;
 };
 
+const isLocalCover = (path?: string): path is string => !!path && path.startsWith(`${COVER_DIR}/`);
+
+const deleteCoverFile = async (path?: string) => {
+    if (!isLocalCover(path)) return;
+    try {
+        await Filesystem.deleteFile({ path, directory: Directory.Data });
+    } catch {
+        // 既に無い場合は無視
+    }
+};
+
+const update = async (id: number, change: (book: Book) => Book): Promise<Book> => {
+    const books = await readAll();
+    const index = books.findIndex((b) => b.id === id);
+    if (index === -1) throw new Error("Book not found");
+    books[index] = { ...change(books[index]), id, updated_at: now() };
+    await writeAll(books);
+    return books[index];
+};
+
 export const localStore: BookStore = {
     fetchBooks: readAll,
 
     addBook: async (book: BookInput) => {
         const books = await readAll();
         const timestamp = now();
-        const created: Book = { ...book, id: await nextId(books), created_at: timestamp, updated_at: timestamp };
+        const created: Book = { ...book, cover_url: "", id: await nextId(books), created_at: timestamp, updated_at: timestamp };
         await writeAll([...books, created]);
         return created;
     },
 
     deleteBook: async (id: number) => {
         const books = await readAll();
-        if (!books.some((b) => b.id === id)) throw new Error("Book not found");
+        const target = books.find((b) => b.id === id);
+        if (!target) throw new Error("Book not found");
         await writeAll(books.filter((b) => b.id !== id));
+        await deleteCoverFile(target.cover_url);
     },
 
-    updateBook: async (id: number, updatedData: Partial<BookInput>) => {
-        const books = await readAll();
-        const index = books.findIndex((b) => b.id === id);
-        if (index === -1) throw new Error("Book not found");
-        const updated: Book = { ...books[index], ...updatedData, id, updated_at: now() };
-        books[index] = updated;
-        await writeAll(books);
-        return updated;
-    },
+    // cover_url は saveCover / removeCover でのみ変更する
+    updateBook: (id: number, updatedData: Partial<BookInput>) =>
+        update(id, (book) => ({ ...book, ...updatedData, cover_url: book.cover_url })),
 
     replaceAll: async (books: Book[]) => {
-        await writeAll(books);
+        try {
+            await Filesystem.rmdir({ path: COVER_DIR, directory: Directory.Data, recursive: true });
+        } catch {
+            // フォルダが無い場合は無視
+        }
+        await writeAll(books.map((b) => ({ ...b, cover_url: "" })));
         await Preferences.remove({ key: NEXT_ID_KEY });
+    },
+
+    saveCover: async (id: number, jpegBase64: string) => {
+        // ファイル名に日時を含め、画像の差し替え時に WebView のキャッシュが使われないようにする
+        const path = `${COVER_DIR}/${id}-${Date.now()}.jpg`;
+        await Filesystem.writeFile({ path, data: jpegBase64, directory: Directory.Data, recursive: true });
+        let old: string | undefined;
+        const book = await update(id, (b) => {
+            old = b.cover_url;
+            return { ...b, cover_url: path };
+        });
+        await deleteCoverFile(old);
+        return book;
+    },
+
+    removeCover: async (id: number) => {
+        let old: string | undefined;
+        const book = await update(id, (b) => {
+            old = b.cover_url;
+            return { ...b, cover_url: "" };
+        });
+        await deleteCoverFile(old);
+        return book;
+    },
+
+    coverSrc: async (book: Book) => {
+        if (!isLocalCover(book.cover_url)) return undefined;
+        if (Capacitor.isNativePlatform()) {
+            const { uri } = await Filesystem.getUri({ path: book.cover_url, directory: Directory.Data });
+            return Capacitor.convertFileSrc(uri);
+        }
+        // ブラウザ(開発用)ではファイル URL が使えないため data URL にする
+        const data = await localStore.readCover(book);
+        return data ? jpegDataUrl(data) : undefined;
+    },
+
+    readCover: async (book: Book) => {
+        if (!isLocalCover(book.cover_url)) return undefined;
+        try {
+            const { data } = await Filesystem.readFile({ path: book.cover_url, directory: Directory.Data });
+            return typeof data === "string" ? data : undefined;
+        } catch {
+            return undefined;
+        }
     },
 };

@@ -18,3 +18,5 @@ node_modules/
 # OS系
 .DS_Store
 Thumbs.db
+# 表紙画像(Web版)
+backend/covers/
