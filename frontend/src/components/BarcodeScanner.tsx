@@ -92,7 +92,7 @@ const BarcodeScanner = ({ onDetected, onClose }: Props) => {
         try {
             const isbn = await decodeIsbnFromImage(file);
             if (isbn) finish(isbn);
-            else setPhotoNote("写真からバーコードを読み取れませんでした。バーコードが画面の横幅の半分以上に写るように、明るい場所で撮り直してください。");
+            else setPhotoNote("写真からバーコードを読み取れませんでした。距離を変えて（30〜50cm）、明るい場所で撮り直してください。小さく写っても構いません。読み取れない場合は ISBN を手入力してください。");
         } catch (error) {
             console.error(error);
             setPhotoNote("写真を読み込めませんでした。");
@@ -114,7 +114,7 @@ const BarcodeScanner = ({ onDetected, onClose }: Props) => {
                 )}
                 <p className="hint">
                     裏表紙の上段のバーコード（978 で始まる番号）を枠に合わせてください。
-                    近づけすぎるとピントが合わないため、15〜20cm ほど離し、明るい場所で試してください。
+                    オートフォーカスの無いカメラでは近づけるとぼやけるため、30〜40cm ほど離し、明るい場所で試してください。
                     {ignored && " 下段のバーコードは ISBN ではないため読み取りません。"}
                 </p>
                 <p className="hint">

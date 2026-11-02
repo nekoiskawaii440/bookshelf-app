@@ -188,7 +188,7 @@ const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithSc
                 <h2>{book ? "本の編集" : "本の追加"}</h2>
 
                 <div className="field isbn-field">
-                    <label htmlFor="isbn">ISBN（本の裏表紙のバーコード上の番号）</label>
+                    <label htmlFor="isbn">ISBN（本の裏表紙のバーコード上の番号。入力し終えると自動で情報を取得）</label>
                     <div className="row">
                         <input
                             id="isbn"
@@ -196,7 +196,15 @@ const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithSc
                             inputMode="numeric"
                             placeholder="13桁または10桁の数字（ハイフンなしでも可）"
                             value={isbnInput}
-                            onChange={(e) => setIsbnInput(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setIsbnInput(value);
+                                // 10 桁または 13 桁の正しい ISBN を入力し終えたら自動で情報を取得する
+                                const digits = value.replace(/[\s-]/g, "");
+                                if ((digits.length === 13 || digits.length === 10) && normalizeIsbn(digits) && !looking) {
+                                    handleLookup(value);
+                                }
+                            }}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                     e.preventDefault();
