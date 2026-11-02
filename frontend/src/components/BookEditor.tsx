@@ -28,10 +28,10 @@ type CoverChange = { kind: "keep" } | { kind: "new"; base64: string } | { kind: 
 
 const empty: BookInput = {
     title: "", author: "", publisher: "", isbn: "", status: "unread", category: "", rating: 3, review: "", cover_url: "",
-    readers: [],
+    started_on: "", finished_on: "", readers: [],
 };
 
-const newEntry = (reader_id: number): ReaderEntry => ({ reader_id, status: "unread", rating: 3 });
+const newEntry = (reader_id: number): ReaderEntry => ({ reader_id, status: "unread", rating: 3, started_on: "", finished_on: "" });
 
 const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithScan = false, onClose, onSaved }: Props) => {
     const toast = useToast();
@@ -338,10 +338,9 @@ const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithSc
                         {form.readers.length > 0 ? (
                             form.readers.map((e) => (
                                 <div className="field" key={e.reader_id}>
-                                    <span className="label">{readers.find((r) => r.id === e.reader_id)?.name} さんの読書状態と評価</span>
+                                    <span className="label">{readers.find((r) => r.id === e.reader_id)?.name} さんの読書記録</span>
                                     <StatusRatingInput
-                                        status={e.status}
-                                        rating={e.rating}
+                                        value={e}
                                         onChange={(v) =>
                                             set("readers", form.readers.map((x) => (x.reader_id === e.reader_id ? { ...x, ...v } : x)))
                                         }
@@ -350,11 +349,12 @@ const BookEditor = ({ book, genres, readers, defaultReaderId = null, startWithSc
                             ))
                         ) : (
                             <div className="field">
-                                <span className="label">読書の状態と評価</span>
+                                <span className="label">読書記録</span>
                                 <StatusRatingInput
-                                    status={form.status}
-                                    rating={form.rating}
-                                    onChange={(v) => setForm((f) => ({ ...f, ...v }))}
+                                    value={form}
+                                    onChange={(v) =>
+                                        setForm((f) => ({ ...f, status: v.status, rating: v.rating, started_on: v.started_on, finished_on: v.finished_on }))
+                                    }
                                 />
                             </div>
                         )}

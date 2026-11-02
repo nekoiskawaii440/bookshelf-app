@@ -6,6 +6,8 @@ DB_PATH = "books.db"
 EXTRA_COLUMNS = {
     "publisher": "TEXT",
     "isbn": "TEXT",
+    "started_on": "TEXT",
+    "finished_on": "TEXT",
 }
 
 
@@ -38,6 +40,10 @@ def migrate():
                 PRIMARY KEY (book_id, reader_id)
             )
         """)
+        reader_columns = {row["name"] for row in conn.execute("PRAGMA table_info(book_readers)")}
+        for name in ("started_on", "finished_on"):
+            if name not in reader_columns:
+                conn.execute(f"ALTER TABLE book_readers ADD COLUMN {name} TEXT")
         conn.commit()
     finally:
         conn.close()

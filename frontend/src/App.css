@@ -728,3 +728,117 @@ input:focus, select:focus, button:focus-visible {
   flex-direction: column;
   gap: 0.4rem;
 }
+
+/* ---- 読書期間・年表 ---- */
+.reading-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.date-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.8rem;
+}
+
+.date-range label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.date-sep {
+  padding-bottom: 0.6rem;
+}
+
+.hint.warning {
+  color: var(--danger);
+}
+
+.period, .timeline-period {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.view-switch button {
+  min-width: 5rem;
+}
+
+.view-switch button.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: bold;
+}
+
+.timeline-year h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin: 1rem 0 0.5rem;
+  font-size: 1.4rem;
+  color: var(--accent-strong);
+  border-bottom: 2px solid var(--border);
+}
+
+.timeline-summary {
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+.timeline-month {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.timeline-month h3 {
+  margin: 0.5rem 0 0;
+  font-size: 1.1rem;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.timeline-month ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem;
+  border-left: 3px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.6rem;
+}
+
+.timeline-item {
+  width: 100%;
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.5rem;
+  text-align: left;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.cover.small {
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.cover.small .cover-placeholder {
+  font-size: 0.6rem;
+  padding: 0.2rem;
+}
+
+.timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}

@@ -16,8 +16,12 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 const toBody = (b: BookInput) => {
-    const { title, author, publisher, isbn, status, category, rating, review, readers } = b;
-    return JSON.stringify({ title, author, publisher, isbn, status, category, rating, review, readers });
+    const { title, author, publisher, isbn, status, category, rating, review, readers, started_on, finished_on } = b;
+    return JSON.stringify({
+        title, author, publisher, isbn, status, category, rating, review, readers,
+        started_on: started_on || null,
+        finished_on: finished_on || null,
+    });
 };
 
 export const apiStore: BookStore = {

@@ -7,6 +7,7 @@ import BookDetail from "./BookDetail";
 import BookEditor from "./BookEditor";
 import CoverImage from "./CoverImage";
 import ReaderTabs from "./ReaderTabs";
+import Timeline from "./Timeline";
 import { useToast } from "./toastContext";
 
 type SortType = "added" | "title" | "author" | "rating" | "status" | "genre";
@@ -22,6 +23,15 @@ const SORT_OPTIONS: { value: SortType; label: string }[] = [
 
 const STATUS_ORDER: Record<BookStatus, number> = { unread: 0, reading: 1, finished: 2 };
 const SHELF_KEY = "selectedShelf";
+const VIEW_KEY = "listView";
+
+const loadView = (): "shelf" | "timeline" => {
+    try {
+        return localStorage.getItem(VIEW_KEY) === "timeline" ? "timeline" : "shelf";
+    } catch {
+        return "shelf";
+    }
+};
 
 const loadShelf = (): number | null => {
     try {
@@ -46,6 +56,15 @@ const BookList = ({ reloadKey, readers }: Props) => {
     const [sortType, setSortType] = useState<SortType>("added");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [shelfState, setShelf] = useState<number | null>(loadShelf);
+    const [view, setView] = useState<"shelf" | "timeline">(loadView);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(VIEW_KEY, view);
+        } catch {
+            // 保存できなくても動作に影響しない
+        }
+    }, [view]);
 
     // 削除された読者の本棚が選ばれていたら「すべて」に戻す
     const shelf = shelfState !== null && readers.some((r) => r.id === shelfState) ? shelfState : null;
@@ -135,22 +154,28 @@ const BookList = ({ reloadKey, readers }: Props) => {
                 <button type="button" className="secondary" onClick={() => setEditing("scan")}>バーコードで追加</button>
                 <span className="count">{shownBooks.length} 冊</span>
                 <span className="spacer" />
-                <label className="sort">
+                <div className="segmented view-switch" role="group" aria-label="表示">
+                    <button type="button" className={view === "shelf" ? "selected" : ""} onClick={() => setView("shelf")}>本棚</button>
+                    <button type="button" className={view === "timeline" ? "selected" : ""} onClick={() => setView("timeline")}>年表</button>
+                </div>
+                {view === "shelf" && <label className="sort">
                     <span>並べ替え</span>
                     <select value={sortType} onChange={(e) => setSortType(e.target.value as SortType)}>
                         {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                </label>
+                </label>}
                 <button
                     type="button"
                     className="secondary"
                     onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
                 >
-                    {sortOrder === "asc" ? "▲ 昇順" : "▼ 降順"}
+                    {view === "timeline" ? (sortOrder === "asc" ? "▲ 古い順" : "▼ 新しい順") : sortOrder === "asc" ? "▲ 昇順" : "▼ 降順"}
                 </button>
             </div>
 
-            {shownBooks.length === 0 ? (
+            {view === "timeline" ? (
+                <Timeline books={books} readers={readers} shelf={shelf} order={sortOrder} onSelect={setDetailBook} />
+            ) : shownBooks.length === 0 ? (
                 <p className="empty">
                     {currentShelfName
                         ? `${currentShelfName} さんの本棚にはまだ本がありません。「本を追加」するか、本の編集画面で読者に ${currentShelfName} さんを選んでください。`

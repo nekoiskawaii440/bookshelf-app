@@ -40,7 +40,8 @@ PROXY_ALLOWED_HOSTS = {
     "books.googleusercontent.com",
 }
 
-FIELDS = ["title", "author", "status", "category", "rating", "review", "publisher", "isbn"]
+FIELDS = ["title", "author", "status", "category", "rating", "review", "publisher", "isbn", "started_on", "finished_on"]
+ENTRY_FIELDS = ["status", "rating", "started_on", "finished_on"]
 
 migrate()
 
@@ -51,7 +52,7 @@ def cover_path(book_id: int) -> Path:
 
 def reader_entries(conn, book_ids=None) -> dict:
     """本 ID → 読者ごとの状態・評価の一覧"""
-    query = "SELECT book_id, reader_id, status, rating FROM book_readers"
+    query = f"SELECT book_id, reader_id, {', '.join(ENTRY_FIELDS)} FROM book_readers"
     params = []
     if book_ids is not None:
         query += f" WHERE book_id IN ({', '.join('?' for _ in book_ids)})"
@@ -59,7 +60,7 @@ def reader_entries(conn, book_ids=None) -> dict:
     entries = {}
     for row in conn.execute(query + " ORDER BY reader_id", params):
         entries.setdefault(row["book_id"], []).append(
-            {"reader_id": row["reader_id"], "status": row["status"], "rating": row["rating"]}
+            {"reader_id": row["reader_id"], **{f: row[f] for f in ENTRY_FIELDS}}
         )
     return entries
 
@@ -79,8 +80,8 @@ def save_reader_entries(conn, book_id: int, book: BookCreate):
     conn.execute("DELETE FROM book_readers WHERE book_id = ?", (book_id,))
     valid = {row["id"] for row in conn.execute("SELECT id FROM readers")}
     conn.executemany(
-        "INSERT INTO book_readers (book_id, reader_id, status, rating) VALUES (?, ?, ?, ?)",
-        [(book_id, e.reader_id, e.status, e.rating) for e in book.readers if e.reader_id in valid],
+        f"INSERT INTO book_readers (book_id, reader_id, {', '.join(ENTRY_FIELDS)}) VALUES (?, ?, ?, ?, ?, ?)",
+        [(book_id, e.reader_id, *[getattr(e, f) for f in ENTRY_FIELDS]) for e in book.readers if e.reader_id in valid],
     )
 
 

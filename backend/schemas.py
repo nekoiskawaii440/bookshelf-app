@@ -14,6 +14,8 @@ class ReaderEntry(BaseModel):
     reader_id: int
     status: str
     rating: Optional[int] = None
+    started_on: Optional[str] = None
+    finished_on: Optional[str] = None
 
 # 共通のフィールド定義
 class BookBase(BaseModel):
@@ -25,6 +27,8 @@ class BookBase(BaseModel):
     review: Optional[str] = None
     publisher: Optional[str] = None
     isbn: Optional[str] = None
+    started_on: Optional[str] = None
+    finished_on: Optional[str] = None
     readers: List[ReaderEntry] = []
 
 # 本作成・更新用リクエストデータ(表紙は別エンドポイントで扱う)

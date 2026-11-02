@@ -1,5 +1,7 @@
 import type { Book, Reader } from "../types";
 import { stars, statusMap } from "../utils/constants";
+import { daysBetween, formatDate } from "../utils/date";
+import type { ReadingRecord } from "../types";
 import CoverImage from "./CoverImage";
 
 type Props = {
@@ -8,6 +10,13 @@ type Props = {
     onClose: () => void;
     onEdit: () => void;
     onDelete: () => void;
+};
+
+// 「2026/03/02 〜 2026/03/15（14日間）」のような読書期間の表示
+const period = (r: ReadingRecord): string | null => {
+    if (!r.started_on && !r.finished_on) return null;
+    const days = daysBetween(r.started_on, r.finished_on);
+    return `${formatDate(r.started_on) || "?"} 〜 ${formatDate(r.finished_on)}${days !== null ? `（${days}日間）` : ""}`;
 };
 
 const BookDetail = ({ book, readers, onClose, onEdit, onDelete }: Props) => {
@@ -32,6 +41,7 @@ const BookDetail = ({ book, readers, onClose, onEdit, onDelete }: Props) => {
                                 <dd>
                                     <span className={`status ${e.status}`}>{statusMap[e.status]}</span>{" "}
                                     <span className="stars">{stars(e.rating)}</span>
+                                    {period(e) && <div className="period">{period(e)}</div>}
                                 </dd>
                             </div>
                         ))
@@ -41,6 +51,7 @@ const BookDetail = ({ book, readers, onClose, onEdit, onDelete }: Props) => {
                             <dd><span className={`status ${book.status}`}>{statusMap[book.status]}</span></dd>
                             <dt>評価</dt>
                             <dd className="stars">{stars(book.rating)}</dd>
+                            {period(book) && (<><dt>読書期間</dt><dd>{period(book)}</dd></>)}
                         </>
                     )}
                     {book.isbn && (<><dt>ISBN</dt><dd>{book.isbn}</dd></>)}

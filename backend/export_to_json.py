@@ -25,10 +25,9 @@ def main() -> None:
     entries = {}
     if "readers" in tables:
         readers = [dict(r) for r in conn.execute("SELECT id, name FROM readers ORDER BY id")]
-        for r in conn.execute("SELECT book_id, reader_id, status, rating FROM book_readers ORDER BY reader_id"):
-            entries.setdefault(r["book_id"], []).append(
-                {"reader_id": r["reader_id"], "status": r["status"], "rating": r["rating"]}
-            )
+        for r in conn.execute("SELECT * FROM book_readers ORDER BY reader_id"):
+            entry = dict(r)
+            entries.setdefault(entry.pop("book_id"), []).append(entry)
     conn.close()
 
     books = []

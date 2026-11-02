@@ -16,7 +16,9 @@ const normalize = (b: Book): Book => ({
     category: normalizeGenre(b.category),
     publisher: b.publisher ?? "",
     isbn: b.isbn ?? "",
-    readers: b.readers ?? [],
+    started_on: b.started_on ?? "",
+    finished_on: b.finished_on ?? "",
+    readers: (b.readers ?? []).map((e) => ({ ...e, started_on: e.started_on ?? "", finished_on: e.finished_on ?? "" })),
 });
 
 export const fetchBooks = async (): Promise<Book[]> => (await store.fetchBooks()).map(normalize);

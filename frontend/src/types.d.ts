@@ -6,10 +6,16 @@ export type Reader = {
     name: string;
 };
 
-export type ReaderEntry = {
-    reader_id: number;
+// 読書の記録(状態・評価・読み始めた日・読み終わった日)。日付は "YYYY-MM-DD"、空文字は未記録
+export type ReadingRecord = {
     status: BookStatus;
     rating: number;
+    started_on?: string;
+    finished_on?: string;
+};
+
+export type ReaderEntry = ReadingRecord & {
+    reader_id: number;
 };
 
 export type Book = {
@@ -18,8 +24,10 @@ export type Book = {
     author: string;
     publisher?: string;
     isbn?: string;
-    // 読者が付いていない本の状態・評価
+    // 読者が付いていない本の状態・評価・読書期間
     status: BookStatus;
+    started_on?: string;
+    finished_on?: string;
     // ジャンル(自由入力)。空文字は未設定
     category: string;
     rating: number;
