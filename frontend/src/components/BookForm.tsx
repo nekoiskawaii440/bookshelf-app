@@ -36,7 +36,7 @@ const BookForm = ({ reloadBooks }:Props) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <h2>✏️ 本の追加</h2>
+            <h2>本の追加</h2>
             <input
                 type="text"
                 placeholder="タイトル"

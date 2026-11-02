@@ -36,8 +36,8 @@ const BackupPanel = ({ reloadBooks }: Props) => {
 
     return (
         <div className="backup-panel">
-            <button type="button" onClick={handleExport}>💾 バックアップ</button>
-            <button type="button" onClick={() => fileInput.current?.click()}>📂 復元</button>
+            <button type="button" onClick={handleExport}>バックアップ</button>
+            <button type="button" onClick={() => fileInput.current?.click()}>復元</button>
             <input
                 ref={fileInput}
                 type="file"

@@ -5,11 +5,11 @@ export const statusMap: Record<string, string> = {
 } as const;
 
 export const ratingMap: Record<number, string> = {
-    1: "⭐",
-    2: "⭐⭐",
-    3: "⭐⭐⭐",
-    4: "⭐⭐⭐⭐",
-    5: "⭐⭐⭐⭐⭐",
+    1: "★☆☆☆☆",
+    2: "★★☆☆☆",
+    3: "★★★☆☆",
+    4: "★★★★☆",
+    5: "★★★★★",
 } as const;
 
 export const categoryMap: Record<string, string> = {

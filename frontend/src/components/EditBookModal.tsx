@@ -49,7 +49,7 @@ const EditBookModal = ({ book, onClose, onSave }: Props) => {
                     <p>評価</p>
                     <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
                         {[1, 2, 3, 4, 5].map((num) => (
-                            <option key={num} value={num}>{'⭐'.repeat(num)} ({num})</option>
+                            <option key={num} value={num}>{ratingMap[num]} ({num})</option>
                         ))}
                     </select>
                     <button onClick={handleSave}>保存</button>

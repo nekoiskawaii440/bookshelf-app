@@ -106,12 +106,12 @@ const BookList = () => {
                     <span className="slider"></span>
                 </label>
                 <span className="mode-label">
-                    {isDarkMode ? "🌙 ダークモード" : "☀️ ライトモード"}
+                    {isDarkMode ? "ダークモード" : "ライトモード"}
                 </span>
             </div>
             <BackupPanel reloadBooks={reloadBooks} />
             <BookForm reloadBooks={reloadBooks} />
-            <h2>📚 本の一覧</h2>
+            <h2>本の一覧</h2>
             <div className="sort">
                 <p>並べ替え :  </p>
                 <select onChange={(e) => setSortType(e.target.value)}>
