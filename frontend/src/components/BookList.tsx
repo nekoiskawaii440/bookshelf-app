@@ -39,7 +39,7 @@ const BookList = ({ reloadKey }: Props) => {
     const toast = useToast();
     const [books, setBooks] = useState<Book[]>([]);
     const [detailBook, setDetailBook] = useState<Book | null>(null);
-    const [editing, setEditing] = useState<Book | "new" | null>(null);
+    const [editing, setEditing] = useState<Book | "new" | "scan" | null>(null);
     const [sortType, setSortType] = useState<SortType>("added");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -89,6 +89,7 @@ const BookList = ({ reloadKey }: Props) => {
         <main className="book-list">
             <div className="toolbar">
                 <button type="button" className="primary add-button" onClick={() => setEditing("new")}>本を追加</button>
+                <button type="button" className="secondary" onClick={() => setEditing("scan")}>バーコードで追加</button>
                 <span className="count">{books.length} 冊</span>
                 <span className="spacer" />
                 <label className="sort">
@@ -137,7 +138,8 @@ const BookList = ({ reloadKey }: Props) => {
             )}
             {editing && (
                 <BookEditor
-                    book={editing === "new" ? undefined : editing}
+                    book={editing === "new" || editing === "scan" ? undefined : editing}
+                    startWithScan={editing === "scan"}
                     genres={genres}
                     onClose={() => setEditing(null)}
                     onSaved={handleSaved}

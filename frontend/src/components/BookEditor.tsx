@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { addBook, removeCover, saveCover, updateBook, type BookInput } from "../api/books";
 import { getImageDataUrl } from "../api/http";
 import { formatStatuses, lookupByIsbn, searchByTitle, type BookInfo } from "../api/lookup";
@@ -6,6 +6,7 @@ import type { Book, BookStatus } from "../types";
 import { STATUS_OPTIONS } from "../utils/constants";
 import { jpegDataUrl, toJpegBase64 } from "../utils/image";
 import { normalizeIsbn } from "../utils/isbn";
+import BarcodeScanner from "./BarcodeScanner";
 import CoverImage from "./CoverImage";
 import RatingInput from "./RatingInput";
 import { useToast } from "./toastContext";
@@ -14,6 +15,8 @@ type Props = {
     // 未指定なら新規追加
     book?: Book;
     genres: string[];
+    // 開いたらすぐにバーコード読み取りを始める
+    startWithScan?: boolean;
     onClose: () => void;
     onSaved: (book: Book) => void;
 };
@@ -25,7 +28,7 @@ const empty: BookInput = {
     title: "", author: "", publisher: "", isbn: "", status: "unread", category: "", rating: 3, review: "", cover_url: "",
 };
 
-const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
+const BookEditor = ({ book, genres, startWithScan = false, onClose, onSaved }: Props) => {
     const toast = useToast();
     const [form, setForm] = useState<BookInput>(book ? { ...empty, ...book } : empty);
     const [cover, setCover] = useState<CoverChange>({ kind: "keep" });
@@ -36,14 +39,15 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
     const [titleQuery, setTitleQuery] = useState("");
     const [searching, setSearching] = useState(false);
     const [candidates, setCandidates] = useState<BookInfo[] | null>(null);
+    const [scanning, setScanning] = useState(startWithScan);
     const fileInput = useRef<HTMLInputElement>(null);
     const cameraInput = useRef<HTMLInputElement>(null);
     const isbnRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         // 新規追加時は ISBN 欄から入力を始められるようにする
-        if (!book) isbnRef.current?.focus();
-    }, [book]);
+        if (!book && !startWithScan) isbnRef.current?.focus();
+    }, [book, startWithScan]);
 
     const set = <K extends keyof BookInput>(key: K, value: BookInput[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -69,8 +73,8 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
         return false;
     };
 
-    const handleLookup = async () => {
-        const isbn = normalizeIsbn(isbnInput);
+    const handleLookup = async (input: string = isbnInput) => {
+        const isbn = normalizeIsbn(input);
         if (!isbn) {
             setLookupNote("ISBN が正しくありません（10桁または13桁の数字）");
             return;
@@ -79,7 +83,7 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
         setCandidates(null);
         setLookupNote("検索中…");
         try {
-            const r = await lookupByIsbn(isbn, isbnInput.replace(/[\s-]/g, "").toUpperCase());
+            const r = await lookupByIsbn(isbn, input.replace(/[\s-]/g, "").toUpperCase());
             const detail = formatStatuses(r.statuses);
             if (!r.statuses.some((s) => s.status === "found")) {
                 setLookupNote(`見つかりませんでした。下の「タイトルで検索」を試すか、手入力してください。（${detail}）`);
@@ -94,6 +98,15 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
             setLooking(false);
         }
     };
+
+    // バーコードを読み取ったら、そのまま書誌情報を取得する
+    const handleScanned = useCallback((isbn: string) => {
+        setScanning(false);
+        setIsbnInput(isbn);
+        handleLookupRef.current(isbn);
+    }, []);
+    const handleLookupRef = useRef(handleLookup);
+    handleLookupRef.current = handleLookup;
 
     const handleTitleSearch = async () => {
         const q = titleQuery.trim();
@@ -182,8 +195,11 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
                                 }
                             }}
                         />
-                        <button type="button" className="secondary" onClick={handleLookup} disabled={looking || !isbnInput.trim()}>
+                        <button type="button" className="secondary" onClick={() => handleLookup()} disabled={looking || !isbnInput.trim()}>
                             {looking ? "検索中…" : "情報を取得"}
+                        </button>
+                        <button type="button" className="secondary" onClick={() => setScanning(true)} disabled={looking}>
+                            バーコード読取
                         </button>
                     </div>
                     <label htmlFor="title-query">ISBN で見つからない・ISBN が無い場合はタイトルで検索</label>
@@ -301,6 +317,11 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
                     <button type="submit" className="primary" disabled={saving}>{saving ? "保存中…" : book ? "保存" : "追加"}</button>
                 </div>
             </form>
+            {scanning && (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <BarcodeScanner onDetected={handleScanned} onClose={() => setScanning(false)} />
+                </div>
+            )}
         </div>
     );
 };
