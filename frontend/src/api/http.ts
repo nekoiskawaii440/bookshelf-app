@@ -7,22 +7,30 @@ import { API_BASE, dataSource } from "./config";
 //   - ブラウザ + 端末内保存(開発用): 直接 fetch(相手が CORS 非対応だと失敗する)
 const TIMEOUT_MS = 10000;
 
-const viaBrowser = async (url: string): Promise<Response> => {
+export class HttpError extends Error {
+    readonly status: number;
+    constructor(status: number, url: string) {
+        super(`HTTP ${status}: ${url}`);
+        this.status = status;
+    }
+}
+
+const viaBrowser = async (url: string, timeoutMs = TIMEOUT_MS): Promise<Response> => {
     const target = dataSource === "api" ? `${API_BASE}/proxy?url=${encodeURIComponent(url)}` : url;
-    const res = await fetch(target, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+    const res = await fetch(target, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) throw new HttpError(res.status, url);
     return res;
 };
 
-export const getText = async (url: string): Promise<string> => {
+export const getText = async (url: string, timeoutMs = TIMEOUT_MS): Promise<string> => {
     if (Capacitor.isNativePlatform()) {
         const res = await CapacitorHttp.get({
-            url, responseType: "text", connectTimeout: TIMEOUT_MS, readTimeout: TIMEOUT_MS,
+            url, responseType: "text", connectTimeout: timeoutMs, readTimeout: timeoutMs,
         });
-        if (res.status >= 400) throw new Error(`HTTP ${res.status}: ${url}`);
+        if (res.status >= 400) throw new HttpError(res.status, url);
         return typeof res.data === "string" ? res.data : JSON.stringify(res.data);
     }
-    return (await viaBrowser(url)).text();
+    return (await viaBrowser(url, timeoutMs)).text();
 };
 
 export const getJson = async <T>(url: string): Promise<T> => JSON.parse(await getText(url)) as T;
@@ -41,7 +49,7 @@ export const getImageDataUrl = async (url: string): Promise<string> => {
         const res = await CapacitorHttp.get({
             url, responseType: "blob", connectTimeout: TIMEOUT_MS, readTimeout: TIMEOUT_MS,
         });
-        if (res.status >= 400) throw new Error(`HTTP ${res.status}: ${url}`);
+        if (res.status >= 400) throw new HttpError(res.status, url);
         const type = (res.headers["Content-Type"] ?? res.headers["content-type"] ?? "image/jpeg").split(";")[0];
         return `data:${type};base64,${res.data as string}`;
     }

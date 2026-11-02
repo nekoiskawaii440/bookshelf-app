@@ -14,3 +14,12 @@ export const normalizeIsbn = (input: string): string | null => {
     }
     return null;
 };
+
+// 978 で始まる ISBN-13 を ISBN-10 に変換する(979 は ISBN-10 が存在しないため null)
+export const isbn13to10 = (isbn13: string): string | null => {
+    if (!/^978\d{10}$/.test(isbn13)) return null;
+    const body = isbn13.slice(3, 12);
+    const sum = [...body].reduce((acc, c, i) => acc + Number(c) * (10 - i), 0);
+    const check = (11 - (sum % 11)) % 11;
+    return body + (check === 10 ? "X" : String(check));
+};

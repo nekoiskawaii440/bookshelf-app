@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { dataSource } from "./api/books";
 import BackupPanel from "./components/BackupPanel";
 import BookList from "./components/BookList";
+import SettingsDialog from "./components/SettingsDialog";
 import { ToastProvider } from "./components/Toast";
 import "./App.css";
 
@@ -16,6 +17,7 @@ const loadDarkMode = () => {
 function App() {
     const [isDarkMode, setIsDarkMode] = useState(loadDarkMode);
     const [reloadKey, setReloadKey] = useState(0);
+    const [showSettings, setShowSettings] = useState(false);
 
     useEffect(() => {
         document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
@@ -33,6 +35,7 @@ function App() {
                 <span className="data-source">保存先：{dataSource === "local" ? "この端末" : "サーバー"}</span>
                 <span className="spacer" />
                 <BackupPanel onRestored={() => setReloadKey((k) => k + 1)} />
+                <button type="button" className="secondary" onClick={() => setShowSettings(true)}>設定</button>
                 <label className="theme-toggle">
                     <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode((v) => !v)} />
                     <span className="slider" />
@@ -40,6 +43,7 @@ function App() {
                 </label>
             </header>
             <BookList reloadKey={reloadKey} />
+            {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
         </ToastProvider>
     );
 }

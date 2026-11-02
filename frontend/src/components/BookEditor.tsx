@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { addBook, removeCover, saveCover, updateBook, type BookInput } from "../api/books";
 import { getImageDataUrl } from "../api/http";
-import { lookupByIsbn } from "../api/lookup";
+import { formatStatuses, lookupByIsbn, searchByTitle, type BookInfo } from "../api/lookup";
 import type { Book, BookStatus } from "../types";
 import { STATUS_OPTIONS } from "../utils/constants";
 import { jpegDataUrl, toJpegBase64 } from "../utils/image";
@@ -33,6 +33,9 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
     const [looking, setLooking] = useState(false);
     const [saving, setSaving] = useState(false);
     const [lookupNote, setLookupNote] = useState("");
+    const [titleQuery, setTitleQuery] = useState("");
+    const [searching, setSearching] = useState(false);
+    const [candidates, setCandidates] = useState<BookInfo[] | null>(null);
     const fileInput = useRef<HTMLInputElement>(null);
     const cameraInput = useRef<HTMLInputElement>(null);
     const isbnRef = useRef<HTMLInputElement>(null);
@@ -44,6 +47,28 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
 
     const set = <K extends keyof BookInput>(key: K, value: BookInput[K]) => setForm((f) => ({ ...f, [key]: value }));
 
+    // 取得した書誌情報をフォームに反映し、表紙の取得を試みる。表紙を取得できたら true
+    const applyInfo = async (info: BookInfo): Promise<boolean> => {
+        if (info.isbn) setIsbnInput(info.isbn);
+        setForm((f) => ({
+            ...f,
+            isbn: info.isbn ?? f.isbn,
+            title: info.title ?? f.title,
+            author: info.author ?? f.author,
+            publisher: info.publisher ?? f.publisher,
+            category: info.genre ?? f.category,
+        }));
+        for (const url of info.coverUrls) {
+            try {
+                setCover({ kind: "new", base64: await toJpegBase64(await getImageDataUrl(url)) });
+                return true;
+            } catch (error) {
+                console.warn("表紙の取得に失敗", url, error);
+            }
+        }
+        return false;
+    };
+
     const handleLookup = async () => {
         const isbn = normalizeIsbn(isbnInput);
         if (!isbn) {
@@ -51,41 +76,50 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
             return;
         }
         setLooking(true);
+        setCandidates(null);
         setLookupNote("検索中…");
         try {
-            const r = await lookupByIsbn(isbn);
-            if (!r.sources.length) {
-                setLookupNote("この ISBN の本は見つかりませんでした。手入力してください。");
+            const r = await lookupByIsbn(isbn, isbnInput.replace(/[\s-]/g, "").toUpperCase());
+            const detail = formatStatuses(r.statuses);
+            if (!r.statuses.some((s) => s.status === "found")) {
+                setLookupNote(`見つかりませんでした。下の「タイトルで検索」を試すか、手入力してください。（${detail}）`);
                 return;
             }
-            setIsbnInput(isbn);
-            setForm((f) => ({
-                ...f,
-                isbn,
-                title: r.title ?? f.title,
-                author: r.author ?? f.author,
-                publisher: r.publisher ?? f.publisher,
-                category: r.genre ?? f.category,
-            }));
-            let coverFound = false;
-            for (const url of r.coverUrls) {
-                try {
-                    setCover({ kind: "new", base64: await toJpegBase64(await getImageDataUrl(url)) });
-                    coverFound = true;
-                    break;
-                } catch (error) {
-                    console.warn("表紙の取得に失敗", url, error);
-                }
-            }
-            setLookupNote(
-                `取得元: ${r.sources.join("、")}` + (coverFound ? "" : "（表紙は見つかりませんでした）"),
-            );
+            const coverFound = await applyInfo(r);
+            setLookupNote(`${coverFound ? "情報を取得しました。" : "表紙は見つかりませんでした。"}（${detail}）`);
         } catch (error) {
             console.error(error);
             setLookupNote("検索に失敗しました。通信状態を確認してください。");
         } finally {
             setLooking(false);
         }
+    };
+
+    const handleTitleSearch = async () => {
+        const q = titleQuery.trim();
+        if (!q) return;
+        setSearching(true);
+        setCandidates(null);
+        setLookupNote("タイトルで検索中…");
+        try {
+            const r = await searchByTitle(q);
+            setCandidates(r.candidates);
+            setLookupNote(
+                (r.candidates.length ? `${r.candidates.length} 件見つかりました。該当する本を選んでください。` : "見つかりませんでした。")
+                + `（${formatStatuses(r.statuses)}）`,
+            );
+        } catch (error) {
+            console.error(error);
+            setLookupNote("検索に失敗しました。通信状態を確認してください。");
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handlePick = async (info: BookInfo) => {
+        setCandidates(null);
+        const coverFound = await applyInfo(info);
+        setLookupNote(coverFound ? "選んだ本の情報を入力しました。" : "選んだ本の情報を入力しました（表紙は見つかりませんでした）。");
     };
 
     const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,7 +186,39 @@ const BookEditor = ({ book, genres, onClose, onSaved }: Props) => {
                             {looking ? "検索中…" : "情報を取得"}
                         </button>
                     </div>
+                    <label htmlFor="title-query">ISBN で見つからない・ISBN が無い場合はタイトルで検索</label>
+                    <div className="row">
+                        <input
+                            id="title-query"
+                            placeholder="タイトルの一部"
+                            value={titleQuery}
+                            onChange={(e) => setTitleQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleTitleSearch();
+                                }
+                            }}
+                        />
+                        <button type="button" className="secondary" onClick={handleTitleSearch} disabled={searching || !titleQuery.trim()}>
+                            {searching ? "検索中…" : "タイトルで検索"}
+                        </button>
+                    </div>
                     {lookupNote && <p className="hint">{lookupNote}</p>}
+                    {candidates && candidates.length > 0 && (
+                        <ul className="candidates">
+                            {candidates.map((c, i) => (
+                                <li key={`${c.isbn ?? ""}-${i}`}>
+                                    <button type="button" onClick={() => handlePick(c)}>
+                                        <span className="candidate-title">{c.title}</span>
+                                        <span className="candidate-meta">
+                                            {[c.author, c.publisher, c.year, c.isbn && `ISBN ${c.isbn}`].filter(Boolean).join(" / ")}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
 
                 <div className="editor-body">
